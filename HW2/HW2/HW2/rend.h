@@ -77,7 +77,7 @@ public:
 	inline int ARRAY(int x, int y){return x+(y*xres);}	/* simplify fbuf indexing */
 	inline short	ctoi(float color) {return(short)((int)(color * ((1 << 12) - 1)));}		/* convert float color to GzIntensity short */
 
-// TODO Should this be placed here?
+// Added additional data structures for the scan-line algorithm
 private:
 	typedef struct {
 		float start[3], end[3];

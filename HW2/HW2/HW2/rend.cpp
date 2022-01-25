@@ -298,7 +298,27 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 				}
 			}
 
-			// Set up DDA
+			// Check if V2 is on left or right
+			bool on_left;
+
+			// Skip if no Y change
+			if (vertices[2][1] - vertices[0][1] == 0) continue;
+			float long_edge_slope_xy = (vertices[2][0] - vertices[0][0]) / (vertices[2][1] - vertices[0][1]);
+			float long_edge_slope_zy = (vertices[2][2] - vertices[0][2]) / (vertices[2][1] - vertices[0][1]);
+			float intercept_xy = vertices[2][0] - long_edge_slope_xy * vertices[2][1];
+			float intercept_zy = vertices[2][2] - long_edge_slope_zy * vertices[2][1];
+			float edge_check = long_edge_slope_xy * vertices[1][1] + intercept_xy;
+
+			// Colinear Triangle
+			if (vertices[1][0] == edge_check) continue;
+
+			// V2 on Right
+			else if (vertices[1][0] > edge_check) on_left = false;
+
+			// V2 on Left
+			else on_left = true;
+
+			// Set up DDA for top half Y values
 			DDA cur;
 			cur.start[0] = vertices[0][0];
 			cur.start[1] = vertices[0][1];
@@ -312,38 +332,10 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 			cur.slope_x = (vertices[1][0] - vertices[0][0]) / (vertices[1][1] - vertices[0][1]);
 			cur.slope_z = (vertices[1][2] - vertices[0][2]) / (vertices[1][1] - vertices[0][1]);
 
-
-			// 3 - Check if V2 is on left or right
-			// TODO Double Check for Negative Values
-			bool on_left;
-
-
-			// Skip if no y change
-			if (vertices[2][1] - vertices[0][1] == 0) continue;
-			float long_edge_slope_xy = (vertices[2][0] - vertices[0][0]) / (vertices[2][1] - vertices[0][1]);
-
-			float long_edge_slope_zy = (vertices[2][2] - vertices[0][2]) / (vertices[2][1] - vertices[0][1]);
-			float intercept_xy = vertices[2][0] - long_edge_slope_xy * vertices[2][1];
-			float intercept_zy = vertices[2][2] - long_edge_slope_zy * vertices[2][1];
-
-			float edge_check = long_edge_slope_xy * vertices[1][1] + intercept_xy;
-			// Colinear Triangle
-			if (vertices[1][0] == edge_check) {
-				continue;
-			}
-			// V2 on Right
-			else if (vertices[1][0] > edge_check) {
-				on_left = false;
-			}
-			// V2 on Left
-			else {
-				on_left = true;
-			}
-		
-			// Top Half
+			// Create DDA_Span for X values
 			DDA_Span span;
 
-			// Advance to first value
+			// Advance to first Y value
 			float dy = (float)(ceil(cur.start[1]) - cur.start[1]);
 			cur.current[0] = cur.start[0] + cur.slope_x * dy;
 			cur.current[1] = cur.start[1] + dy;
@@ -374,17 +366,16 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 				span.current[1] = span.start[1];
 				span.slope_z = (span.end[1] - span.start[1]) / (span.end[0] - span.start[0]);
 
-				// Advance to first value
+				// Advance to first X value
 				float dx = (float)(ceil(span.start[0]) - span.start[0]);
 				span.current[0] = span.start[0] + dx;
 				span.current[1] = span.start[1] + dx * span.slope_z;
 
 				// Loop over the X coordinates
 				while (span.current[0] < span.end[0]) {
-					// Write current value into the pixel buffer only if it's closer to the camera
+					// Z Buffering - Write current value into the pixel buffer only if it's closer to the camera
 					if (span.current[0] >= 0 && span.current[0] < xres && cur.current[1] >= 0 && cur.current[1] < yres && (GzDepth)span.current[1] < pixelbuffer[ARRAY((int)span.current[0], (int)cur.current[1])].z) {
-						GzPut(span.current[0], cur.current[1], ctoi(flatcolor[0]), ctoi(flatcolor[1]), ctoi(flatcolor[2]), 4095, (GzDepth)span.current[1]);
-						//GzPut((int)span.current[0], (int)cur.current[1], 4095, 0, 0, 4095, (GzDepth)span.current[1]);
+						GzPut((int)span.current[0], (int)cur.current[1], ctoi(flatcolor[0]), ctoi(flatcolor[1]), ctoi(flatcolor[2]), 4095, (GzDepth)span.current[1]);
 					}
 
 					// Step the current X
@@ -396,10 +387,9 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 				cur.current[0] += cur.slope_x;
 				cur.current[1]++;
 				cur.current[2] += cur.slope_z;
-				
 			}
 
-			// Bottom Half
+			// Set up DDA for bottom half Y values
 			cur.start[0] = vertices[1][0];
 			cur.start[1] = vertices[1][1];
 			cur.start[2] = vertices[1][2];
@@ -412,7 +402,7 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 			cur.slope_x = (vertices[2][0] - vertices[1][0]) / (vertices[2][1] - vertices[1][1]);
 			cur.slope_z = (vertices[2][2] - vertices[1][2]) / (vertices[2][1] - vertices[1][1]);
 
-			// Advance to first value
+			// Advance to first Y value
 			dy = (float)(ceil(cur.start[1]) - cur.start[1]);
 			cur.current[0] = cur.start[0] + cur.slope_x * dy;
 			cur.current[1] = cur.start[1] + dy;
@@ -443,17 +433,16 @@ int GzRender::GzPutTriangle(int	numParts, GzToken *nameList, GzPointer *valueLis
 				span.current[1] = span.start[1];
 				span.slope_z = (span.end[1] - span.start[1]) / (span.end[0] - span.start[0]);
 
-				// Advance to first value
+				// Advance to first X value
 				float dx = (float)(ceil(span.start[0]) - span.start[0]);
 				span.current[0] = span.start[0] + dx;
 				span.current[1] = span.start[1] + dx * span.slope_z;
 
 				// Loop over the X coordinates
 				while (span.current[0] < span.end[0]) {
-					// Write current value into the pixel buffer only if it's closer to the camera
+					// Z Buffering - Write current value into the pixel buffer only if it's closer to the camera
 					if (span.current[0] >= 0 && span.current[0] < xres && cur.current[1] >= 0 && cur.current[1] < yres && (GzDepth)span.current[1] < pixelbuffer[ARRAY((int)span.current[0], (int)cur.current[1])].z) {
 						GzPut((int)span.current[0], (int)cur.current[1], ctoi(flatcolor[0]), ctoi(flatcolor[1]), ctoi(flatcolor[2]), 4095, (GzDepth)span.current[1]);
-						//GzPut((int)span.current[0], (int)cur.current[1], 0, 4095, 0, 4095, (GzDepth)span.current[1]);
 					}
 
 					// Step the current X
