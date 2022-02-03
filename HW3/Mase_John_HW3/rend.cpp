@@ -190,11 +190,11 @@ GzRender::GzRender(int xRes, int yRes)
 	Xsp[1][0] = 0.0;
 	Xsp[1][1] = -1.0f * yres / 2.0f;
 	Xsp[1][2] = 0.0;
-	Xsp[1][3] = yres / 2.0;
+	Xsp[1][3] = yres / 2.0f;
 
 	Xsp[2][0] = 0.0;
 	Xsp[2][1] = 0.0;
-	Xsp[2][2] = MAXINT;
+	Xsp[2][2] = 1.0f * MAXINT;
 	Xsp[2][3] = 0.0;
 
 	Xsp[3][0] = 0.0;
@@ -368,6 +368,7 @@ int GzRender::GzPushMatrix(GzMatrix	matrix)
 		-- check for stack overflow
 	*/
 	
+	// If at the bottom, just add it to the stack
 	if (matlevel == 0) {
 		for (int i = 0; i < 4; i++) {
 			for (int j = 0; j < 4; j++) {
@@ -375,10 +376,13 @@ int GzRender::GzPushMatrix(GzMatrix	matrix)
 			}
 		}
 	}
+
+	// Otherwise add to the stack by mutiplying the new matrix by the existing top of the stack
 	else {
 		matrix_matrix_multiply(Ximage[matlevel - 1], matrix, Ximage[matlevel]);
 	}
 
+	// Raise the stack head index by 1
 	matlevel++;
 
 	return GZ_SUCCESS;
@@ -391,6 +395,7 @@ int GzRender::GzPopMatrix()
 		-- check for stack underflow
 	*/
 
+	// Decrement the head if we're not at the base
 	if (matlevel != 0) {
 		matlevel--;
 	}
@@ -452,7 +457,6 @@ int GzRender::GzPut(int i, int j, GzIntensity r, GzIntensity g, GzIntensity b, G
 	// As per Slack, don't return GZ_FAILURE on out of bounds
 }
 
-
 int GzRender::GzGet(int i, int j, GzIntensity *r, GzIntensity *g, GzIntensity *b, GzIntensity *a, GzDepth *z)
 {
 	/* HW1.5 retrieve a pixel information from the pixel buffer */
@@ -471,7 +475,6 @@ int GzRender::GzGet(int i, int j, GzIntensity *r, GzIntensity *g, GzIntensity *b
 
 	// As per Slack, don't return GZ_FAILURE on out of bounds
 }
-
 
 int GzRender::GzFlushDisplay2File(FILE* outfile)
 {

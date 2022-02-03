@@ -87,6 +87,7 @@ public:
 	int GzScaleMat(GzCoord scale, GzMatrix mat);
 	
 // Added additional data structures for the scan-line algorithm
+// Added additional helper methods for vector and matrix operations
 private:
 	typedef struct {
 		float start[3], end[3];
