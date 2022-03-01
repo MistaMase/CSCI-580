@@ -233,7 +233,7 @@ GzRender::GzRender(int xRes, int yRes)
 	Xsp[3][0] = 0.0;
 	Xsp[3][1] = 0.0;
 	Xsp[3][2] = 0.0;
-	Xsp[3][3] = 1.0;
+	Xsp[3][3] = 1.0f;
 
 	// Initialize the default camera
 	// Initialize Camera FOV
@@ -251,7 +251,7 @@ GzRender::GzRender(int xRes, int yRes)
 
 	// Initialize Camera Up Vector
 	m_camera.worldup[0] = 0.0;
-	m_camera.worldup[1] = 1.0;
+	m_camera.worldup[1] = 1.0f;
 	m_camera.worldup[2] = 0.0;
 
 	// Zero out last triangle
@@ -270,20 +270,20 @@ GzRender::GzRender(int xRes, int yRes)
 	// Zero out last normal, ensure it's a normal just in case
 	last_normal[0][0] = 0.0;
 	last_normal[0][1] = 0.0;
-	last_normal[0][2] = 0.1;
+	last_normal[0][2] = 1.0f;
 
 	last_normal[1][0] = 0.0;
 	last_normal[1][1] = 0.0;
-	last_normal[1][2] = 0.1;
+	last_normal[1][2] = 1.0f;
 
 	last_normal[2][0] = 0.0;
 	last_normal[2][1] = 0.0;
-	last_normal[2][2] = 0.1;
+	last_normal[2][2] = 1.0f;
 
 	// Zero out flat color vertex normal, ensure it's a normal just in case
 	flatcolor_vertex_normal[0] = 0.0;
 	flatcolor_vertex_normal[1] = 0.0;
-	flatcolor_vertex_normal[2] = 1.0;
+	flatcolor_vertex_normal[2] = 1.0f;
 }
 
 GzRender::~GzRender()
@@ -446,7 +446,7 @@ int GzRender::GzPushMatrix(GzMatrix	matrix)
 	*/
 
 	// Compute a scale factor to ensure all rotations are unitary
-	float scale_factor = sqrt(pow(matrix[0][0], 2) + pow(matrix[0][1], 2) + pow(matrix[0][2], 2));
+	float scale_factor = (float)sqrt(pow(matrix[0][0], 2) + pow(matrix[0][1], 2) + pow(matrix[0][2], 2));
 
 	// Remove translations from any matrix going onto Xnorm, apply scale factor
 	GzMatrix normals_matrix_parsed = {	{ matrix[0][0] / scale_factor,	matrix[0][1] / scale_factor,	matrix[0][2] / scale_factor,	0.0,		},
@@ -1081,9 +1081,9 @@ int GzRender::GzLightingShading(int pixel_x, int pixel_y, GzColor& color) {
 		GzCoord vertex_red_channels = { vertex_colors[0][0], vertex_colors[1][0], vertex_colors[2][0] };
 		GzCoord vertex_green_channels = { vertex_colors[0][1], vertex_colors[1][1], vertex_colors[2][1] };
 		GzCoord vertex_blue_channels = { vertex_colors[0][2], vertex_colors[1][2], vertex_colors[2][2] };
-		GzInterpolate(vertex_position_screen_space, vertex_red_channels, pixel_x, pixel_y, color[0]);
-		GzInterpolate(vertex_position_screen_space, vertex_green_channels, pixel_x, pixel_y, color[1]);
-		GzInterpolate(vertex_position_screen_space, vertex_blue_channels, pixel_x, pixel_y, color[2]);
+		GzInterpolate(vertex_position_screen_space, vertex_red_channels, (float)pixel_x, (float)pixel_y, color[0]);
+		GzInterpolate(vertex_position_screen_space, vertex_green_channels, (float)pixel_x, (float)pixel_y, color[1]);
+		GzInterpolate(vertex_position_screen_space, vertex_blue_channels, (float)pixel_x, (float)pixel_y, color[2]);
 	}
 
 	// Phong Shading - Interpolating vertex normals and compute color using interpolated normal
@@ -1099,9 +1099,9 @@ int GzRender::GzLightingShading(int pixel_x, int pixel_y, GzColor& color) {
 		GzCoord vertex_x_values = { shading_normals[0][0], shading_normals[1][0], shading_normals[2][0] };
 		GzCoord vertex_y_values = { shading_normals[0][1], shading_normals[1][1], shading_normals[2][1] };
 		GzCoord vertex_z_values = { shading_normals[0][2], shading_normals[1][2], shading_normals[2][2] };
-		GzInterpolate(vertex_position_screen_space, vertex_x_values, pixel_x, pixel_y, interpolated_normal[0]);
-		GzInterpolate(vertex_position_screen_space, vertex_y_values, pixel_x, pixel_y, interpolated_normal[1]);
-		GzInterpolate(vertex_position_screen_space, vertex_z_values, pixel_x, pixel_y, interpolated_normal[2]);
+		GzInterpolate(vertex_position_screen_space, vertex_x_values, (float)pixel_x, (float)pixel_y, interpolated_normal[0]);
+		GzInterpolate(vertex_position_screen_space, vertex_y_values, (float)pixel_x, (float)pixel_y, interpolated_normal[1]);
+		GzInterpolate(vertex_position_screen_space, vertex_z_values, (float)pixel_x, (float)pixel_y, interpolated_normal[2]);
 
 		// Find the color at the pixel using the interpolated normal
 		status |= GzComputePixelColor(color, interpolated_normal);
@@ -1122,7 +1122,7 @@ int GzRender::GzComputePixelColor(GzColor& color, GzCoord normal) {
 	color[2] = Ka[2] * ambientlight.color[2];
 
 	// Loop over all light sources
-	for (size_t light_num = 0; light_num < numlights; light_num++) {
+	for (int light_num = 0; light_num < numlights; light_num++) {
 		// Renormalize just in case of fp precision issues
 		GzCoord unit_normal = { normal[0], normal[1], normal[2] };
 		normalize(unit_normal);
@@ -1174,7 +1174,7 @@ int GzRender::GzComputePixelColor(GzColor& color, GzCoord normal) {
 		else if (RdotEtoSpecular < 0.0) RdotEtoSpecular = 0.0;
 
 		// Raise R . E to the specular power
-		RdotEtoSpecular = pow(RdotEtoSpecular, spec);
+		RdotEtoSpecular = (float)pow(RdotEtoSpecular, spec);
 
 		// Compute specular lighting
 		color[0] += Ks[0] * lights[light_num].color[0] * RdotEtoSpecular;
